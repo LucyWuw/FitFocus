@@ -1,9 +1,11 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { LogEntry } from "../types";
 
-// Always use named parameter and process.env.API_KEY directly
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+/**
+ * Local Natural Language Parser
+ * This replaces the need for an external AI API.
+ * It uses regex and keyword matching to find calories, protein, and activity types.
+ */
 export const analyzeHealthInput = async (input: string): Promise<{
   name: string;
   calories: number;
@@ -14,49 +16,58 @@ export const analyzeHealthInput = async (input: string): Promise<{
   duration?: number;
   type: 'MEAL' | 'EXERCISE';
 } | null> => {
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Analyze the following health/food log: "${input}"`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING, description: 'Short descriptive name' },
-            calories: { type: Type.NUMBER, description: 'Calories (positive number)' },
-            protein: { type: Type.NUMBER, description: 'Protein in grams' },
-            carbs: { type: Type.NUMBER, description: 'Carbohydrates in grams' },
-            fats: { type: Type.NUMBER, description: 'Fats in grams' },
-            minerals: { type: Type.NUMBER, description: 'Nutrient density score 0-100 based on micro-nutrients/minerals' },
-            duration: { type: Type.NUMBER, description: 'Duration in minutes (if exercise)' },
-            type: { type: Type.STRING, description: 'Type: MEAL or EXERCISE' }
-          },
-          required: ['name', 'calories', 'type']
-        }
-      }
-    });
+  // Simulate a small delay for "AI" feel
+  await new Promise(resolve => setTimeout(resolve, 400));
+  
+  const text = input.toLowerCase();
+  
+  // Basic Regex for numbers followed by units
+  const calMatch = text.match(/(\d+)\s*(?:kcal|calories|cal)/);
+  const proteinMatch = text.match(/(\d+)\s*(?:g|grams)\s*(?:of\s*)?protein/);
+  const carbsMatch = text.match(/(\d+)\s*(?:g|grams)\s*(?:of\s*)?carbs/);
+  const fatsMatch = text.match(/(\d+)\s*(?:g|grams)\s*(?:of\s*)?fats/);
+  const durationMatch = text.match(/(\d+)\s*(?:min|minutes|hr|hour)/);
 
-    const text = response.text;
-    if (!text) return null;
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("AI Analysis failed:", error);
-    return null;
-  }
+  // Determine Type
+  const exerciseKeywords = ['run', 'yoga', 'gym', 'workout', 'lift', 'cardio', 'walk', 'exercise', 'cycling', 'swimming'];
+  const isExercise = exerciseKeywords.some(kw => text.includes(kw));
+
+  // Default values if not found
+  const calories = calMatch ? parseInt(calMatch[1]) : (isExercise ? 200 : 350);
+  const protein = proteinMatch ? parseInt(proteinMatch[1]) : (isExercise ? 0 : 20);
+  const carbs = carbsMatch ? parseInt(carbsMatch[1]) : (isExercise ? 0 : 40);
+  const fats = fatsMatch ? parseInt(fatsMatch[1]) : (isExercise ? 0 : 10);
+  const minerals = 70 + Math.floor(Math.random() * 20); // Random nutrient density score
+  const duration = durationMatch ? parseInt(durationMatch[1]) : (isExercise ? 30 : 0);
+
+  // Clean up Name
+  let name = input.length > 30 ? input.substring(0, 27) + '...' : input;
+  
+  return {
+    name,
+    calories,
+    protein,
+    carbs,
+    fats,
+    minerals,
+    duration: isExercise ? duration : 0,
+    type: isExercise ? 'EXERCISE' : 'MEAL'
+  };
 };
 
-export const getHealthAdvice = async (summary: string): Promise<string> => {
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: summary,
-      config: {
-        systemInstruction: "You are Coach Kanga, a cute winged kangaroo fitness coach in purple leggings. Analyze user nutrition and give brief advice (under 15 words) or a joke if they are doing great."
-      }
-    });
-    return response.text || "Keep it up, you're doing great!";
-  } catch (error) {
-    return "Let's keep hopping toward those goals!";
-  }
+/**
+ * Local Rule-based Advice Engine
+ */
+export const getHealthAdvice = async (summaryData: string): Promise<string> => {
+    // In the local version, we parse the summaryData string or just provide generic encouraging tips
+    const tips = [
+        "Hydration is key! Don't forget your Stanley cup.",
+        "Protein helps muscle recovery. Looking strong!",
+        "Consistency beats perfection every single time.",
+        "You're hopping closer to your goals today!",
+        "Leggings on, world off. Let's get moving!",
+        "A little progress each day adds up to big results.",
+        "You're doing amazing! Coach Kanga is proud."
+    ];
+    return tips[Math.floor(Math.random() * tips.length)];
 };
