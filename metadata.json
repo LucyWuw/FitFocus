@@ -1,0 +1,7 @@
+{
+  "name": "FitFocus AI - Daily Health Companion",
+  "description": "A comprehensive fitness and nutrition tracker featuring AI-powered meal analysis, exercise logging, and progress visualization.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
